@@ -8,10 +8,13 @@ services:
       - '3000:3000'
     environment:
       - MONGO_URI=${MONGO_URI}
+      - NODE_ENV=prod
     depends_on:
       - mongo
     volumes:
       - .:/usr/src/app
+    networks:
+      - app-network
     command: npm run start:dev
 
   mongo:
@@ -21,6 +24,12 @@ services:
       - '27017:27017'
     volumes:
       - mongo-data:/data/db
+    networks:
+      - app-network
 
 volumes:
   mongo-data:
+
+networks:
+  app-network:
+    driver: bridge

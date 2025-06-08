@@ -63,6 +63,9 @@ export class AnalyticsService {
       (pr: PullRequest) => pr.merged_at !== null,
     );
     const closedPRs = userPRs.filter(
+      (pr: PullRequest) => pr.closed_at && !!pr.merged_at,
+    );
+    const closedButNotMergedPRs = userPRs.filter(
       (pr: PullRequest) => pr.closed_at && !pr.merged_at,
     );
 
@@ -77,6 +80,7 @@ export class AnalyticsService {
       totalPRs: userPRs.length,
       mergedPRs: mergedPRs.length,
       closedPRs: closedPRs.length,
+      closedButNotMergedPRs: closedButNotMergedPRs.length,
       successRate: (mergedPRs.length / userPRs.length) * 100 || 0,
       averageMergeTimeHours: averageMergeTime / (1000 * 60 * 60),
     };

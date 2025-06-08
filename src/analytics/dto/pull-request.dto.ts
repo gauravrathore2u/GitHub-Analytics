@@ -41,6 +41,9 @@ export class DeveloperMetricsDto {
   mergedPRs!: number;
 
   @ApiProperty()
+  closedButNotMergedPRs!: number;
+
+  @ApiProperty()
   closedPRs!: number;
 
   @ApiProperty()

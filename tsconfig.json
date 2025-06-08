@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "strict": true,
+    "module": "CommonJS",
+    "target": "ES2022",
+    "moduleResolution": "Node",
+    "outDir": "./dist",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2023",
     "sourceMap": true,
-    "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -20,6 +21,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
+  "exclude": ["dist", "node_modules"],
   "rules": {
     "@typescript-eslint/no-unsafe-assignment": "warn",
     "@typescript-eslint/no-unsafe-call": "warn",

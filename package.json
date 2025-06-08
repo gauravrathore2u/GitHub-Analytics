@@ -28,7 +28,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.0",
-    "@octokit/rest": "^22.0.0",
+    "@octokit/rest": "^18.12.0",
     "@octokit/types": "^14.1.0",
     "@types/passport-github2": "^1.2.9",
     "axios": "^1.9.0",
@@ -72,7 +72,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.20.0"
   },
   "jest": {

@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Octokit } from '@octokit/rest';
@@ -13,7 +10,6 @@ import {
 
 type PullRequest =
   RestEndpointMethodTypes['pulls']['list']['response']['data'][0];
-type PullRequestResponse = RestEndpointMethodTypes['pulls']['list']['response'];
 
 @Injectable()
 export class AnalyticsService {
@@ -54,15 +50,15 @@ export class AnalyticsService {
     repo: string,
     username: string,
   ): Promise<DeveloperMetricsDto> {
-    const response = (await this.octokit.pulls.list({
+    const response = await this.octokit.pulls.list({
       owner,
       repo,
       state: 'all',
-    })) as PullRequestResponse;
+    });
 
     const userPRs = response.data.filter(
       (pr: PullRequest) => pr.user?.login === username,
-    ) as PullRequest[];
+    );
     const mergedPRs = userPRs.filter(
       (pr: PullRequest) => pr.merged_at !== null,
     );
@@ -90,19 +86,19 @@ export class AnalyticsService {
     owner: string,
     repo: string,
   ): Promise<TimingMetricsDto> {
-    const response = (await this.octokit.pulls.list({
+    const response = await this.octokit.pulls.list({
       owner,
       repo,
       state: 'all',
-    })) as PullRequestResponse;
+    });
 
     const now = new Date();
     const openPRs = response.data.filter(
       (pr: PullRequest) => pr.state === 'open',
-    ) as PullRequest[];
+    );
     const mergedPRs = response.data.filter(
       (pr: PullRequest) => pr.merged_at !== null,
-    ) as PullRequest[];
+    );
 
     const averageTimeToMerge =
       mergedPRs.reduce((acc: number, pr: PullRequest) => {

@@ -1,96 +1,80 @@
 # GitHub Analytics
 
-A powerful analytics platform built with NestJS that provides insights into GitHub repositories and user activities.
+A powerful analytics platform built with [NestJS](https://nestjs.com/) that provides insights into GitHub repositories and developer activities.
 
 ## Features
 
-- GitHub OAuth Authentication
-- Repository Analytics
-- User Activity Tracking
-- Custom Analytics Dashboard
-- Real-time Data Updates
+- GitHub OAuth and Personal Access Token (PAT) Authentication
+- Repository Pull Request Analytics
+- Developer Pull Request Metrics
+- Pull Request Timing Metrics (e.g., average time to merge, longest open PRs)
+- User Profile Management (MongoDB)
+- Swagger API Documentation
+- Docker Support
 
 ## Prerequisites
 
 - Node.js (v16 or higher)
-- MongoDB
+- MongoDB (local or Docker)
 - GitHub Account
-- GitHub OAuth App credentials
+- GitHub OAuth App credentials **or** a GitHub Personal Access Token (PAT)
 
 ## Project Setup
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/GitHub-Analytics.git
-cd GitHub-Analytics
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/GitHub-Analytics.git
+   cd GitHub-Analytics
+   ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-3. Set up environment variables:
-Create a `.env` file in the root directory with:
-```
-# Server Configuration
-PORT=3000
-NODE_ENV=development
+3. **Set up environment variables:**
+   Create a `.env` file in the root directory. Example:
+   ```
+   # Server Configuration
+   PORT=3000
+   NODE_ENV=development
 
-# MongoDB Configuration
-MONGO_URI=mongodb://localhost:27017/github-analytics
+   # MongoDB Configuration
+   MONGO_URI=mongodb://localhost:27017/github-analytics
 
-# GitHub OAuth Configuration
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
-GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
-```
+   # GitHub OAuth Configuration (for OAuth login)
+   GITHUB_CLIENT_ID=your_client_id
+   GITHUB_CLIENT_SECRET=your_client_secret
+   GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
+
+   # GitHub PAT (for PAT authentication)
+   GITHUB_PAT=your_personal_access_token
+   ```
 
 ## Authentication Setup
+
+### GitHub OAuth
 
 1. Create a GitHub OAuth application:
    - Go to GitHub Settings > Developer Settings > OAuth Apps
    - Click "New OAuth App"
-   - Set the following:
+   - Set:
      - Application name: GitHub Analytics
-     - Homepage URL: `http://localhost:3000` (for development)
+     - Homepage URL: `http://localhost:3000`
      - Authorization callback URL: `http://localhost:3000/auth/github/callback`
+2. Copy the Client ID and Client Secret to your `.env` file.
 
-2. Copy the Client ID and Client Secret to your `.env` file
+### Personal Access Token (PAT)
 
-## Alternative: Personal Access Token (PAT) Authentication
-
-You can also authenticate using a GitHub Personal Access Token (PAT) instead of OAuth:
-
-1. Create a GitHub Personal Access Token:
-   - Go to GitHub Settings > Developer Settings > Personal Access Tokens > Tokens (classic)
-   - Click "Generate new token (classic)"
-   - Give it a descriptive name (e.g., "GitHub Analytics")
-   - Select the following scopes:
-     - `repo` (Full control of private repositories)
-     - `read:user` (Read user profile data)
-     - `user:email` (Read user email addresses)
-   - Click "Generate token"
-   - Copy the generated token immediately (you won't be able to see it again)
-
-2. Add the PAT to your `.env` file:
-```
-GITHUB_PAT=your_personal_access_token
-```
-
-3. When using PAT authentication:
-   - The application will use the PAT to fetch your GitHub user data
-   - Your user profile will be automatically created/updated in the database
-   - Initialize your user profile by making a POST request to `/auth/pat/initialize`
-   - After initialization, the PAT will be used for all subsequent API calls
-   - This method is more suitable for automated scripts and background processes
-
-Example initialization using curl:
-```bash
-curl -X POST http://localhost:3000/auth/pat/initialize
-```
-
-Note: Keep your PAT secure and never commit it to version control. The PAT provides access to your GitHub account, so treat it like a password.
+1. Create a GitHub PAT with scopes:
+   - `repo`
+   - `read:user`
+   - `user:email`
+2. Add the PAT to your `.env` file as `GITHUB_PAT`.
+3. Initialize your user profile:
+   ```bash
+   curl -X POST http://localhost:3000/auth/pat/initialize
+   ```
 
 ## Running the Application
 
@@ -102,24 +86,27 @@ npm run start:dev
 npm run start:prod
 ```
 
-## Login Flow
+## API Endpoints
 
-1. Visit `http://localhost:3000/auth/github` to start the GitHub OAuth flow
-2. You'll be redirected to GitHub to authorize the application
-3. After authorization, you'll be redirected back to the application
-4. The application will create/update your user profile and log you in
+- **Authentication**
+  - `GET /auth/github` — Start OAuth login
+  - `GET /auth/github/callback` — OAuth callback
+  - `POST /auth/pat/initialize` — Initialize user with PAT
+
+- **Analytics**
+  - `GET /analytics/repos/:owner/:repo/pulls` — List open PRs for a repo
+  - `GET /analytics/repos/:owner/:repo/developers/:username` — PR metrics for a developer
+  - `GET /analytics/repos/:owner/:repo/timing` — PR timing metrics
 
 ## API Documentation
 
-Once the application is running, you can access the Swagger API documentation at:
-```
-http://localhost:3000/api
-```
+Swagger UI is available at:  
+[http://localhost:3000/api](http://localhost:3000/api)
 
 ## Development
 
 ```bash
-# Run tests
+# Run unit tests
 npm run test
 
 # Run e2e tests
@@ -134,7 +121,7 @@ npm run lint
 
 ## Docker Support
 
-The project includes Docker configuration for easy deployment:
+The project includes Docker configuration:
 
 ```bash
 # Build and run with Docker Compose

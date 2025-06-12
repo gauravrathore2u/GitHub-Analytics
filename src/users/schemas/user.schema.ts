@@ -25,6 +25,12 @@ export class User {
 
   @Prop({ default: Date.now })
   updatedAt!: Date;
+
+  @Prop({ required: true })
+  passwordHash!: string;
+
+  @Prop({ required: true })
+  encryptedPat!: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

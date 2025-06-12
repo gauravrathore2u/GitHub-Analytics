@@ -5,9 +5,16 @@ import { HttpModule } from '@nestjs/axios';
 import { AuthController } from './auth.controller';
 import { GithubStrategy } from './github.strategy';
 import { UsersModule } from '../users/users.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [PassportModule, ConfigModule, UsersModule, HttpModule],
+  imports: [
+    PassportModule,
+    ConfigModule,
+    UsersModule,
+    HttpModule,
+    JwtModule.register({}),
+  ],
   controllers: [AuthController],
   providers: [GithubStrategy],
 })

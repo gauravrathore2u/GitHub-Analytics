@@ -1,128 +1,84 @@
-import { Controller, Get, UseGuards, Req, Res, Post } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Response, Request } from 'express';
+import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
-import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
-import { AxiosError } from 'axios';
-import { firstValueFrom } from 'rxjs';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-
-interface GitHubUserResponse {
-  id: number;
-  login: string;
-  email: string | null;
-  avatar_url: string;
-}
+import { Types } from 'mongoose';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly usersService: UsersService,
-    private readonly configService: ConfigService,
-    private readonly httpService: HttpService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  @Get('github')
-  @UseGuards(AuthGuard('github'))
+  @Post('signup')
   @ApiOperation({
-    summary: 'Initiate GitHub OAuth authentication',
+    summary: 'Sign up a new user',
   })
   @ApiResponse({
-    status: 302,
-    description: 'Redirects to GitHub for authentication',
-  })
-  async githubAuth() {
-    // This route will redirect to GitHub
-  }
-
-  @Get('github/callback')
-  @UseGuards(AuthGuard('github'))
-  @ApiOperation({
-    summary: 'GitHub OAuth callback endpoint',
-  })
-  @ApiResponse({
-    status: 302,
-    description: 'Redirects to frontend after successful authentication',
-  })
-  async githubAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const user = req.user as {
-      id: string;
-      username: string;
-      email: string;
-      avatar: string;
-      accessToken: string;
-    };
-
-    if (!user) {
-      throw new Error('User not found in request');
-    }
-
-    // Save or update user in database
-    await this.usersService.createOrUpdate(user);
-
-    // For now, we'll just redirect to the frontend
-    res.redirect('/');
-  }
-
-  @Post('pat/initialize')
-  @ApiOperation({
-    summary: 'Initialize user profile with GitHub Personal Access Token',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User profile initialized successfully',
+    status: 201,
+    description: 'Signup successful!, Please login',
   })
   @ApiResponse({
     status: 400,
-    description: 'GitHub PAT not configured or invalid',
+    description: 'Invalid input data',
+  })
+  async signup(
+    @Body()
+    body: {
+      username: string;
+      password: string;
+      confirmPassword: string;
+      githubPat: string;
+    },
+  ) {
+    if (body.password !== body.confirmPassword) {
+      throw new Error('Password and confirm password do not match');
+    }
+    const user = await this.usersService.signup(body);
+
+    let userId = '';
+    if (user && user._id) {
+      if (typeof user._id === 'string') {
+        userId = user._id;
+      } else if (user._id instanceof Types.ObjectId) {
+        userId = user._id.toString();
+      }
+    }
+    return { message: 'Signup successful!, Please login', userId };
+  }
+
+  @Post('login')
+  @ApiOperation({
+    summary: 'Log in an existing user',
   })
   @ApiResponse({
-    status: 500,
-    description: 'Failed to initialize user profile',
+    status: 200,
+    description: 'Login successful',
   })
-  async initializeWithPat(@Res() res: Response) {
-    const pat = this.configService.get<string>('GITHUB_PAT');
-
-    if (!pat) {
-      throw new Error('GitHub PAT not configured');
-    }
-
-    try {
-      // Fetch user data from GitHub API using HttpService
-      const { data } = await firstValueFrom(
-        this.httpService.get<GitHubUserResponse>(
-          'https://api.github.com/user',
-          {
-            headers: {
-              Authorization: `Bearer ${pat}`,
-            },
-          },
-        ),
-      );
-
-      if (!data) {
-        throw new Error('No user data received from GitHub');
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials',
+  })
+  async login(@Body() body: { username: string; password: string }) {
+    const user = await this.usersService.validateUser(
+      body.username,
+      body.password,
+    );
+    if (!user) throw new UnauthorizedException('Invalid credentials');
+    let userId = '';
+    if (user && user._id) {
+      if (typeof user._id === 'string') {
+        userId = user._id;
+      } else if (user._id instanceof Types.ObjectId) {
+        userId = user._id.toString();
       }
-
-      const userData = {
-        id: data.id.toString(),
-        username: data.login,
-        email: data.email ?? '',
-        avatar: data.avatar_url,
-        accessToken: pat,
-      };
-
-      // Save or update user in database
-      await this.usersService.createOrUpdate(userData);
-
-      res.json({ message: 'User profile initialized successfully' });
-    } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        throw new Error(`GitHub API error: ${error.message}`);
-      }
-      throw new Error('Failed to initialize user profile with PAT');
     }
+    const payload = { sub: userId, username: user.username };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '24h' });
+    // Save the accessToken to the user document with expiry
+    await this.usersService.updateAccessToken(userId, accessToken);
+    return { accessToken };
   }
 }

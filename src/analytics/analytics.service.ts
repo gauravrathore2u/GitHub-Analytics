@@ -71,9 +71,12 @@ export class AnalyticsService {
 
     const averageMergeTime =
       mergedPRs.reduce((acc: number, pr: PullRequest) => {
-        const created = new Date(pr.created_at);
-        const merged = new Date(pr.merged_at as string);
-        return acc + (merged.getTime() - created.getTime());
+        const created = pr.created_at ? new Date(pr.created_at) : null;
+        const merged = pr.merged_at ? new Date(pr.merged_at) : null;
+        if (created && merged) {
+          return acc + (merged.getTime() - created.getTime());
+        }
+        return acc;
       }, 0) / (mergedPRs.length || 1);
 
     return {
@@ -106,9 +109,12 @@ export class AnalyticsService {
 
     const averageTimeToMerge =
       mergedPRs.reduce((acc: number, pr: PullRequest) => {
-        const created = new Date(pr.created_at);
-        const merged = new Date(pr.merged_at as string);
-        return acc + (merged.getTime() - created.getTime());
+        const created = pr.created_at ? new Date(pr.created_at) : null;
+        const merged = pr.merged_at ? new Date(pr.merged_at) : null;
+        if (created && merged) {
+          return acc + (merged.getTime() - created.getTime());
+        }
+        return acc;
       }, 0) / (mergedPRs.length || 1);
 
     const longestRunningPRs = openPRs

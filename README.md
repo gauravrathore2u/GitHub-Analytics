@@ -1,141 +1,115 @@
 # GitHub Analytics
 
-A powerful analytics platform built with [NestJS](https://nestjs.com/) that provides insights into GitHub repositories and developer activities.
+A NestJS-based backend service for analyzing GitHub repositories, providing authentication, user management, and analytics endpoints. This project is designed to help users gain insights from GitHub data, such as pull requests and user activity, with secure authentication and modular architecture.
 
 ## Features
+- JWT authentication
+- User management with JWT
+- Analytics endpoints for GitHub pull requests and user data
+- Modular, scalable NestJS architecture
+- Dockerized for easy deployment
+- ESLint and TypeScript support
+- Rate limiting for API endpoints
 
-- GitHub OAuth and Personal Access Token (PAT) Authentication
-- Repository Pull Request Analytics
-- Developer Pull Request Metrics
-- Pull Request Timing Metrics (e.g., average time to merge, longest open PRs)
-- User Profile Management (MongoDB)
-- Swagger API Documentation
-- Docker Support
+## Tech Stack
+- [NestJS](https://nestjs.com/) (Node.js framework)
+- TypeScript
+- Docker
+- JWT Authentication
+- MongoDB
+- Rate Limiting
+- ESLint
 
-## Prerequisites
+## Getting Started
 
-- Node.js (v16 or higher)
-- MongoDB (local or Docker)
-- GitHub Account
-- GitHub OAuth App credentials **or** a GitHub Personal Access Token (PAT)
+### Prerequisites
+- Node.js (v18+ recommended)
+- npm or yarn
+- MongoDB (local or cloud instance)
+- Docker (optional, for containerized deployment)
 
-## Project Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/GitHub-Analytics.git
-   cd GitHub-Analytics
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables:**
-   Create a `.env` file in the root directory. Example:
-   ```
-   # Server Configuration
-   PORT=3000
-   NODE_ENV=development
-
-   # MongoDB Configuration
-   MONGO_URI=mongodb://localhost:27017/github-analytics
-
-   # GitHub OAuth Configuration (for OAuth login)
-   GITHUB_CLIENT_ID=your_client_id
-   GITHUB_CLIENT_SECRET=your_client_secret
-   GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
-
-   # GitHub PAT (for PAT authentication)
-   GITHUB_PAT=your_personal_access_token
-   ```
-
-## Authentication Setup
-
-### GitHub OAuth
-
-1. Create a GitHub OAuth application:
-   - Go to GitHub Settings > Developer Settings > OAuth Apps
-   - Click "New OAuth App"
-   - Set:
-     - Application name: GitHub Analytics
-     - Homepage URL: `http://localhost:3000`
-     - Authorization callback URL: `http://localhost:3000/auth/github/callback`
-2. Copy the Client ID and Client Secret to your `.env` file.
-
-### Personal Access Token (PAT)
-
-1. Create a GitHub PAT with scopes:
-   - `repo`
-   - `read:user`
-   - `user:email`
-2. Add the PAT to your `.env` file as `GITHUB_PAT`.
-3. Initialize your user profile:
-   ```bash
-   curl -X POST http://localhost:3000/auth/pat/initialize
-   ```
-
-## Running the Application
-
+### Installation
 ```bash
-# Development mode
+npm install
+```
+
+### Running Locally
+```bash
 npm run start:dev
-
-# Production mode
-npm run start:prod
 ```
 
-## API Endpoints
-
-- **Authentication**
-  - `GET /auth/github` — Start OAuth login
-  - `GET /auth/github/callback` — OAuth callback
-  - `POST /auth/pat/initialize` — Initialize user with PAT
-
-- **Analytics**
-  - `GET /analytics/repos/:owner/:repo/pulls` — List open PRs for a repo
-  - `GET /analytics/repos/:owner/:repo/developers/:username` — PR metrics for a developer
-  - `GET /analytics/repos/:owner/:repo/timing` — PR timing metrics
-
-## API Documentation
-
-Swagger UI is available at:  
-[http://localhost:3000/api](http://localhost:3000/api)
-
-## Development
-
+### Running with Docker
 ```bash
-# Run unit tests
-npm run test
-
-# Run e2e tests
-npm run test:e2e
-
-# Generate test coverage
-npm run test:cov
-
-# Lint code
-npm run lint
-```
-
-## Docker Support
-
-The project includes Docker configuration:
-
-```bash
-# Build and run with Docker Compose
 docker-compose up --build
 ```
 
-## Contributing
+## Usage Notes
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- **GitHub Personal Access Token (PAT) is required during signup.** You must provide a valid PAT when creating your account. This is mandatory for the analytics features to work, as the application uses your PAT to access GitHub data on your behalf.
+- After signup, log in with your username and password to receive a JWT authentication token.
+- **JWT token is valid for 24 hours.** After expiration, you must log in again to obtain a new token for API access.
 
-## License
+## API Endpoints
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### App
+
+- **GET /**  
+  _Check server running_  
+  **Response:** `"server is up!"`
+
+---
+
+### Authentication (`/auth`)
+
+- **POST /auth/signup**  
+  _Sign up a new user_  
+  **Body:** `{ username, password, confirmPassword, githubPat }`  
+  **Response:** `{ message, userId }`  
+  **Description:** Creates a new user account with username, password, and GitHub Personal Access Token (PAT).
+
+- **POST /auth/login**  
+  _Log in an existing user_  
+  **Body:** `{ username, password }`  
+  **Response:** `{ accessToken }`  
+  **Description:** Authenticates a user and returns a JWT access token.
+
+---
+
+### Analytics (`/analytics`)
+
+> All analytics endpoints require JWT authentication.
+
+- **GET /analytics/repos/:owner/:repo/pulls**  
+  _Get all open pull requests for a repository_  
+  **Response:** `Array<PullRequestDto>`  
+  **Description:** Returns a list of open pull requests for the specified repository.
+
+- **GET /analytics/repos/:owner/:repo/developers/:username**  
+  _Get pull request metrics for a specific developer_  
+  **Response:** `DeveloperMetricsDto`  
+  **Description:** Returns pull request statistics (total, merged, closed, etc.) for a developer in the specified repository.
+
+- **GET /analytics/repos/:owner/:repo/timing**  
+  _Get pull request timing metrics_  
+  **Response:** `TimingMetricsDto`  
+  **Description:** Returns average time to merge and the longest running open pull requests for the repository.
+
+
+## Folder Structure
+```
+src/
+  app.controller.ts        # Main app controller
+  app.module.ts            # Root module
+  analytics/               # Analytics feature module
+    analytics.controller.ts
+    analytics.service.ts
+    dto/
+  auth/                    # Authentication module
+    auth.controller.ts
+    github.strategy.ts
+    jwt.strategy.ts
+  users/                   # User management module
+    users.service.ts
+    schemas/
+  utils/                   # Utility functions
+```

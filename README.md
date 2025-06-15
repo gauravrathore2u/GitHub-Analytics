@@ -113,3 +113,14 @@ src/
     schemas/
   utils/                   # Utility functions
 ```
+
+## Environment Variables
+
+The following environment variables are required for the application to run:
+
+- `NODE_ENV` — Set the environment (e.g., `dev`, `prod`).
+- `MONGO_URI` — MongoDB connection string (local or cloud instance).
+- `JWT_SECRET` — Secret key for signing JWT tokens.
+- `ENCRYPTION_KEY` — 32-character key for encrypting GitHub PATs (must be exactly 32 characters).
+
+Create a `.env` file in the project root and set these variables before running the application.

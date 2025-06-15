@@ -1,10 +1,17 @@
 import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Types } from 'mongoose';
 
 @ApiTags('Authentication')
+@ApiBearerAuth()
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -15,14 +22,42 @@ export class AuthController {
   @Post('signup')
   @ApiOperation({
     summary: 'Sign up a new user',
+    description:
+      'Creates a new user account with username, password, and GitHub PAT.',
   })
   @ApiResponse({
     status: 201,
-    description: 'Signup successful!, Please login',
+    description: 'Signup successful! Please login',
+    schema: {
+      example: {
+        message: 'Signup successful!, Please login',
+        userId: '60d0fe4f5311236168a109ca',
+      },
+    },
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid input data',
+    description: 'Invalid input data or password mismatch',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Password and confirm password do not match',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiBody({
+    required: true,
+    schema: {
+      type: 'object',
+      properties: {
+        username: { type: 'string', example: 'johndoe' },
+        password: { type: 'string', example: 'password123' },
+        confirmPassword: { type: 'string', example: 'password123' },
+        githubPat: { type: 'string', example: 'ghp_XXXXXXXXXXXXXXXXXXXX' },
+      },
+      required: ['username', 'password', 'confirmPassword', 'githubPat'],
+    },
   })
   async signup(
     @Body()
@@ -52,14 +87,38 @@ export class AuthController {
   @Post('login')
   @ApiOperation({
     summary: 'Log in an existing user',
+    description: 'Authenticates a user and returns a JWT access token.',
   })
   @ApiResponse({
     status: 200,
     description: 'Login successful',
+    schema: {
+      example: {
+        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      },
+    },
   })
   @ApiResponse({
     status: 401,
     description: 'Invalid credentials',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Invalid credentials',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiBody({
+    required: true,
+    schema: {
+      type: 'object',
+      properties: {
+        username: { type: 'string', example: 'johndoe' },
+        password: { type: 'string', example: 'password123' },
+      },
+      required: ['username', 'password'],
+    },
   })
   async login(@Body() body: { username: string; password: string }) {
     const user = await this.usersService.validateUser(

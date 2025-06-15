@@ -7,99 +7,118 @@ import {
   DeveloperMetricsDto,
   TimingMetricsDto,
 } from './dto/pull-request.dto';
+import { Request } from 'express';
 
-let analyticsService: AnalyticsService;
-let controller: AnalyticsController;
+describe('AnalyticsController', () => {
+  let analyticsService: AnalyticsService;
+  let controller: AnalyticsController;
 
-beforeEach(async () => {
-  const mockAnalyticsService = {
-    getOpenPullRequests: jest.fn<Promise<PullRequestDto[]>, [string, string]>(),
-    getDeveloperPullRequests: jest.fn<
-      Promise<DeveloperMetricsDto>,
-      [string, string, string]
-    >(),
-    getPullRequestTimingMetrics: jest.fn<
-      Promise<TimingMetricsDto>,
-      [string, string]
-    >(),
-  } as unknown as AnalyticsService;
-  const module: TestingModule = await Test.createTestingModule({
-    controllers: [AnalyticsController],
-    providers: [{ provide: AnalyticsService, useValue: mockAnalyticsService }],
-  }).compile();
+  function mockRequest(user: unknown): Request {
+    return { user } as Request;
+  }
 
-  controller = module.get<AnalyticsController>(AnalyticsController);
-  analyticsService = module.get<AnalyticsService>(AnalyticsService);
-});
+  beforeEach(async () => {
+    const mockAnalyticsService = {
+      getOpenPullRequests: jest.fn(),
+      getDeveloperPullRequests: jest.fn(),
+      getPullRequestTimingMetrics: jest.fn(),
+    } as unknown as AnalyticsService;
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AnalyticsController],
+      providers: [
+        { provide: AnalyticsService, useValue: mockAnalyticsService },
+      ],
+    }).compile();
 
-it('should be defined', () => {
-  expect(controller).toBeDefined();
-});
-
-describe('getOpenPullRequests', () => {
-  it('should return open pull requests for a repo', async () => {
-    const params = { owner: 'octocat', repo: 'hello-world' };
-    const result: PullRequestDto[] = [
-      {
-        id: 1,
-        number: 1,
-        url: 'https://github.com/octocat/hello-world/pull/1',
-        title: 'Test PR',
-        author: 'dev1',
-        createdAt: new Date().toISOString(),
-        status: 'open',
-        mergedAt: null,
-        closedAt: null,
-      } as PullRequestDto,
-    ];
-    const mockGetOpenPullRequests =
-      analyticsService.getOpenPullRequests as jest.Mock;
-    mockGetOpenPullRequests.mockResolvedValue(result);
-    expect(await controller.getOpenPullRequests(params)).toBe(result);
-    expect(mockGetOpenPullRequests).toHaveBeenCalledWith(
-      'octocat',
-      'hello-world',
-    );
+    controller = module.get<AnalyticsController>(AnalyticsController);
+    analyticsService = module.get<AnalyticsService>(AnalyticsService);
   });
-});
 
-describe('getDeveloperPullRequests', () => {
-  it('should return developer pull request metrics', async () => {
-    const params = { owner: 'octocat', repo: 'hello-world', username: 'dev1' };
-    const result: DeveloperMetricsDto = {
-      totalPRs: 5,
-      mergedPRs: 3,
-      closedButNotMergedPRs: 1,
-      closedPRs: 4,
-      successRate: 0.75,
-      averageMergeTimeHours: 12,
-    };
-    const mockGetDeveloperPullRequests =
-      analyticsService.getDeveloperPullRequests as jest.Mock;
-    mockGetDeveloperPullRequests.mockResolvedValue(result);
-    expect(await controller.getDeveloperPullRequests(params)).toBe(result);
-    expect(mockGetDeveloperPullRequests).toHaveBeenCalledWith(
-      'octocat',
-      'hello-world',
-      'dev1',
-    );
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
   });
-});
 
-describe('getPullRequestTimingMetrics', () => {
-  it('should return pull request timing metrics', async () => {
-    const params = { owner: 'octocat', repo: 'hello-world' };
-    const result: TimingMetricsDto = {
-      averageTimeToMergeHours: 10,
-      longestRunningPRs: [],
-    };
-    const mockGetPullRequestTimingMetrics =
-      analyticsService.getPullRequestTimingMetrics as jest.Mock;
-    mockGetPullRequestTimingMetrics.mockResolvedValue(result);
-    expect(await controller.getPullRequestTimingMetrics(params)).toBe(result);
-    expect(mockGetPullRequestTimingMetrics).toHaveBeenCalledWith(
-      'octocat',
-      'hello-world',
-    );
+  describe('getOpenPullRequests', () => {
+    it('should return open pull requests for a repo', async () => {
+      const params = { owner: 'octocat', repo: 'hello-world' };
+      const req = mockRequest({ sub: 'user123' });
+      const result: PullRequestDto[] = [
+        {
+          id: 1,
+          number: 1,
+          url: 'https://github.com/octocat/hello-world/pull/1',
+          title: 'Test PR',
+          author: 'dev1',
+          createdAt: new Date().toISOString(),
+          status: 'open',
+          mergedAt: null,
+          closedAt: null,
+        } as PullRequestDto,
+      ];
+      jest
+        .spyOn(analyticsService, 'getOpenPullRequests')
+        .mockResolvedValue(result);
+      const response = await controller.getOpenPullRequests(params, req);
+      expect(response).toEqual(result);
+      expect(analyticsService.getOpenPullRequests).toHaveBeenCalledWith(
+        'octocat',
+        'hello-world',
+        'user123',
+      );
+    });
+  });
+
+  describe('getDeveloperPullRequests', () => {
+    it('should return developer pull request metrics', async () => {
+      const params = {
+        owner: 'octocat',
+        repo: 'hello-world',
+        username: 'dev1',
+      };
+      const req = mockRequest({ sub: 'user123' });
+      const result: DeveloperMetricsDto = {
+        totalPRs: 5,
+        mergedPRs: 3,
+        closedButNotMergedPRs: 1,
+        closedPRs: 4,
+        successRate: 0.75,
+        averageMergeTimeHours: 12,
+      };
+      jest
+        .spyOn(analyticsService, 'getDeveloperPullRequests')
+        .mockResolvedValue(result);
+      const response = await controller.getDeveloperPullRequests(params, req);
+      expect(response).toEqual(result);
+      expect(analyticsService.getDeveloperPullRequests).toHaveBeenCalledWith(
+        'octocat',
+        'hello-world',
+        'dev1',
+        'user123',
+      );
+    });
+  });
+
+  describe('getPullRequestTimingMetrics', () => {
+    it('should return pull request timing metrics', async () => {
+      const params = { owner: 'octocat', repo: 'hello-world' };
+      const req = mockRequest({ sub: 'user123' });
+      const result: TimingMetricsDto = {
+        averageTimeToMergeHours: 10,
+        longestRunningPRs: [],
+      };
+      jest
+        .spyOn(analyticsService, 'getPullRequestTimingMetrics')
+        .mockResolvedValue(result);
+      const response = await controller.getPullRequestTimingMetrics(
+        params,
+        req,
+      );
+      expect(response).toEqual(result);
+      expect(analyticsService.getPullRequestTimingMetrics).toHaveBeenCalledWith(
+        'octocat',
+        'hello-world',
+        'user123',
+      );
+    });
   });
 });

@@ -1,7 +1,10 @@
 import * as crypto from 'crypto';
 
+// Ensure the key is exactly 32 bytes (256 bits) for AES-256
 const ENCRYPTION_KEY =
-  process.env.ENCRYPTION_KEY || 'default_secret_key_32bytes!'; // Must be 32 bytes
+  process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY.length === 32
+    ? process.env.ENCRYPTION_KEY
+    : '12345678901234567890123456789012'; // 32 bytes fallback
 const IV_LENGTH = 16;
 
 export function encrypt(text: string): string {

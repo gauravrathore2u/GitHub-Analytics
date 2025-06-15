@@ -16,17 +16,22 @@ export class UsersService {
     avatar: string;
     accessToken: string;
   }): Promise<User> {
-    const { id, ...rest } = userData;
+    // Remove githubId usage, use username as unique identifier
+    const { username, ...rest } = userData;
     const user = await this.userModel.findOneAndUpdate(
-      { githubId: id },
+      { username },
       { ...rest, updatedAt: new Date() },
       { upsert: true, new: true },
     );
     return user;
   }
 
-  async findByGithubId(githubId: string): Promise<User | null> {
-    return this.userModel.findOne({ githubId }).exec();
+  async findById(id: string): Promise<User | null> {
+    return this.userModel.findOne({ _id: id }).exec();
+  }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return this.userModel.findOne({ username }).exec();
   }
 
   getAccessToken(user: User): string {

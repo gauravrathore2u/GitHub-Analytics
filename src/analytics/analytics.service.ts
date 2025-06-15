@@ -7,29 +7,34 @@ import {
   PullRequestDto,
   TimingMetricsDto,
 } from './dto/pull-request.dto';
+import { UsersService } from '../users/users.service';
 
 type PullRequest =
   RestEndpointMethodTypes['pulls']['list']['response']['data'][0];
 
 @Injectable()
 export class AnalyticsService {
-  private readonly octokit: Octokit;
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly usersService: UsersService, // inject UsersService
+  ) {}
 
-  constructor(private readonly configService: ConfigService) {
-    const githubPat = this.configService.get<string>('GITHUB_PAT');
-    if (!githubPat) {
-      throw new Error('GITHUB_PAT environment variable is not set');
+  private async getOctokitForUser(username: string): Promise<Octokit> {
+    const user = await this.usersService.findById(username);
+    if (!user) {
+      throw new Error('User not found');
     }
-    this.octokit = new Octokit({
-      auth: githubPat,
-    });
+    const pat = this.usersService.getDecryptedPat(user);
+    return new Octokit({ auth: pat });
   }
 
   async getOpenPullRequests(
     owner: string,
     repo: string,
+    username: string,
   ): Promise<PullRequestDto[]> {
-    const response = await this.octokit.pulls.list({
+    const octokit = await this.getOctokitForUser(username);
+    const response = await octokit.pulls.list({
       owner,
       repo,
       state: 'open',
@@ -48,16 +53,18 @@ export class AnalyticsService {
   async getDeveloperPullRequests(
     owner: string,
     repo: string,
+    developerUsername: string,
     username: string,
   ): Promise<DeveloperMetricsDto> {
-    const response = await this.octokit.pulls.list({
+    const octokit = await this.getOctokitForUser(username);
+    const response = await octokit.pulls.list({
       owner,
       repo,
       state: 'all',
     });
 
     const userPRs = response.data.filter(
-      (pr: PullRequest) => pr.user?.login === username,
+      (pr: PullRequest) => pr.user?.login === developerUsername,
     );
     const mergedPRs = userPRs.filter(
       (pr: PullRequest) => pr.merged_at !== null,
@@ -92,8 +99,10 @@ export class AnalyticsService {
   async getPullRequestTimingMetrics(
     owner: string,
     repo: string,
+    username: string,
   ): Promise<TimingMetricsDto> {
-    const response = await this.octokit.pulls.list({
+    const octokit = await this.getOctokitForUser(username);
+    const response = await octokit.pulls.list({
       owner,
       repo,
       state: 'all',

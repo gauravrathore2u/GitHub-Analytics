@@ -1,158 +1,160 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyticsService } from './analytics.service';
+import { UsersService } from '../users/users.service';
 import { ConfigService } from '@nestjs/config';
-import { Octokit } from '@octokit/rest';
-import type { RestEndpointMethodTypes } from '@octokit/rest';
-import type { Matchers } from '@jest/expect';
 
-type PullRequest =
-  RestEndpointMethodTypes['pulls']['list']['response']['data'][0];
+const mockUsersService = {
+  findById: jest.fn(),
+  getDecryptedPat: jest.fn(),
+};
+const mockConfigService = {};
 
-type JestMatchers = Matchers<void>;
+const mockOctokit = {
+  pulls: {
+    list: jest.fn(),
+  },
+};
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
-  let mockOctokit: {
-    pulls: {
-      list: jest.Mock;
-    };
-  };
-
-  const mockConfigService = {
-    get: jest.fn().mockReturnValue('mock-github-pat'),
-  };
-
-  const mockPullRequest: PullRequest = {
-    title: 'Test PR',
-    user: { login: 'testuser' },
-    created_at: '2024-01-01T00:00:00Z',
-    state: 'open',
-    number: 1,
-    html_url: 'https://github.com/test/repo/pull/1',
-    merged_at: null,
-    closed_at: null,
-  } as PullRequest;
 
   beforeEach(async () => {
-    mockOctokit = {
-      pulls: {
-        list: jest.fn(),
-      },
-    };
-
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnalyticsService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
-        {
-          provide: Octokit,
-          useValue: mockOctokit,
-        },
+        { provide: UsersService, useValue: mockUsersService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     service = module.get<AnalyticsService>(AnalyticsService);
-    // Override the octokit instance in the service
-    Object.defineProperty(service, 'octokit', { value: mockOctokit });
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+    jest
+      .spyOn(service as any, 'getOctokitForUser')
+      .mockImplementation(() => Promise.resolve(mockOctokit as any));
   });
 
   describe('getOpenPullRequests', () => {
     it('should return open pull requests', async () => {
-      const mockResponse = {
-        data: [mockPullRequest],
-      };
-      mockOctokit.pulls.list.mockResolvedValue(mockResponse);
-
-      const result = await service.getOpenPullRequests('owner', 'repo');
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
-        title: 'Test PR',
-        author: 'testuser',
-        createdAt: '2024-01-01T00:00:00Z',
-        status: 'open',
-        number: 1,
-        url: 'https://github.com/test/repo/pull/1',
+      mockOctokit.pulls.list.mockResolvedValue({
+        data: [
+          {
+            title: 'PR 1',
+            user: { login: 'dev1' },
+            created_at: '2023-01-01T00:00:00Z',
+            state: 'open',
+            number: 1,
+            html_url: 'http://example.com/pr1',
+          },
+        ],
       });
-      expect(mockOctokit.pulls.list).toHaveBeenCalledWith({
-        owner: 'owner',
-        repo: 'repo',
-        state: 'open',
-      });
+      const prs = await service.getOpenPullRequests(
+        'owner',
+        'repo',
+        'username',
+      );
+      expect(prs).toEqual([
+        {
+          title: 'PR 1',
+          author: 'dev1',
+          createdAt: '2023-01-01T00:00:00Z',
+          status: 'open',
+          number: 1,
+          url: 'http://example.com/pr1',
+        },
+      ]);
     });
   });
 
   describe('getDeveloperPullRequests', () => {
     it('should return developer metrics', async () => {
-      const mockPRs: PullRequest[] = [
-        { ...mockPullRequest, merged_at: '2024-01-02T00:00:00Z' },
-        {
-          ...mockPullRequest,
-          number: 2,
-          closed_at: '2024-01-03T00:00:00Z',
-          merged_at: '2024-01-03T00:00:00Z',
-        },
-        { ...mockPullRequest, number: 3, closed_at: '2024-01-04T00:00:00Z' },
-      ];
-      mockOctokit.pulls.list.mockResolvedValue({ data: mockPRs });
-
-      const result = await service.getDeveloperPullRequests(
+      mockOctokit.pulls.list.mockResolvedValue({
+        data: [
+          {
+            user: { login: 'dev1' },
+            created_at: '2023-01-01T00:00:00Z',
+            merged_at: '2023-01-02T00:00:00Z',
+            closed_at: '2023-01-02T00:00:00Z',
+            state: 'closed',
+            number: 1,
+            html_url: 'http://example.com/pr1',
+            title: 'PR 1',
+          },
+          {
+            user: { login: 'dev1' },
+            created_at: '2023-01-03T00:00:00Z',
+            merged_at: null,
+            closed_at: '2023-01-04T00:00:00Z',
+            state: 'closed',
+            number: 2,
+            html_url: 'http://example.com/pr2',
+            title: 'PR 2',
+          },
+          {
+            user: { login: 'dev2' },
+            created_at: '2023-01-05T00:00:00Z',
+            merged_at: null,
+            closed_at: null,
+            state: 'open',
+            number: 3,
+            html_url: 'http://example.com/pr3',
+            title: 'PR 3',
+          },
+        ],
+      });
+      const metrics = await service.getDeveloperPullRequests(
         'owner',
         'repo',
-        'testuser',
+        'dev1',
+        'username',
       );
-
-      expect(result).toEqual({
-        totalPRs: 3,
-        mergedPRs: 2,
-        closedPRs: 1,
-        closedButNotMergedPRs: 1,
-        successRate: (2 / 3) * 100,
-        averageMergeTimeHours: expect.any(Number) as JestMatchers,
-      });
+      expect(metrics.totalPRs).toBe(2);
+      expect(metrics.mergedPRs).toBe(1);
+      expect(metrics.closedPRs).toBe(1);
+      expect(metrics.closedButNotMergedPRs).toBe(1);
+      expect(metrics.successRate).toBeCloseTo(50);
+      expect(metrics.averageMergeTimeHours).toBeCloseTo(24);
     });
   });
 
   describe('getPullRequestTimingMetrics', () => {
     it('should return timing metrics', async () => {
-      const mockPRs: PullRequest[] = [
-        { ...mockPullRequest, merged_at: '2024-01-02T00:00:00Z' },
-        { ...mockPullRequest, number: 2, state: 'open' },
-        { ...mockPullRequest, number: 3, state: 'open' },
-      ];
-      mockOctokit.pulls.list.mockResolvedValue({ data: mockPRs });
-
-      const result = await service.getPullRequestTimingMetrics('owner', 'repo');
-
-      expect(result).toEqual({
-        averageTimeToMergeHours: expect.any(Number) as JestMatchers,
-        longestRunningPRs: expect.arrayContaining([
-          expect.objectContaining({
-            title: 'Test PR',
-            number: expect.any(Number) as JestMatchers,
-            author: 'testuser',
-            daysOpen: expect.any(Number) as JestMatchers,
-            url: expect.any(String) as JestMatchers,
-          }),
-        ]) as JestMatchers,
+      const now = new Date();
+      const openCreated = new Date(
+        now.getTime() - 5 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      mockOctokit.pulls.list.mockResolvedValue({
+        data: [
+          {
+            user: { login: 'dev1' },
+            created_at: openCreated,
+            merged_at: null,
+            closed_at: null,
+            state: 'open',
+            number: 1,
+            html_url: 'http://example.com/pr1',
+            title: 'PR 1',
+          },
+          {
+            user: { login: 'dev2' },
+            created_at: '2023-01-01T00:00:00Z',
+            merged_at: '2023-01-02T00:00:00Z',
+            closed_at: '2023-01-02T00:00:00Z',
+            state: 'closed',
+            number: 2,
+            html_url: 'http://example.com/pr2',
+            title: 'PR 2',
+          },
+        ],
       });
-      expect(result.longestRunningPRs).toHaveLength(3);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should throw error when GITHUB_PAT is not set', () => {
-      mockConfigService.get.mockReturnValue(null);
-      expect(() => new AnalyticsService(mockConfigService as any)).toThrow(
-        'GITHUB_PAT environment variable is not set',
+      const metrics = await service.getPullRequestTimingMetrics(
+        'owner',
+        'repo',
+        'username',
       );
+      expect(metrics.averageTimeToMergeHours).toBeCloseTo(24);
+      expect(metrics.longestRunningPRs[0].daysOpen).toBeGreaterThanOrEqual(4);
+      expect(metrics.longestRunningPRs[0].title).toBe('PR 1');
     });
   });
 });

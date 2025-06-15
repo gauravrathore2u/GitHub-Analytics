@@ -1,5 +1,11 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import {
   DeveloperMetricsDto,
@@ -8,8 +14,11 @@ import {
   RepositoryParamsDto,
   TimingMetricsDto,
 } from './dto/pull-request.dto';
+import { Request } from 'express';
 
 @ApiTags('analytics')
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
@@ -19,8 +28,14 @@ export class AnalyticsController {
   @ApiResponse({ status: 200, type: [PullRequestDto] })
   async getOpenPullRequests(
     @Param() params: RepositoryParamsDto,
+    @Req() req: Request,
   ): Promise<PullRequestDto[]> {
-    return this.analyticsService.getOpenPullRequests(params.owner, params.repo);
+    const username = extractUsername(req.user);
+    return this.analyticsService.getOpenPullRequests(
+      params.owner,
+      params.repo,
+      username,
+    );
   }
 
   @Get('repos/:owner/:repo/developers/:username')
@@ -30,11 +45,14 @@ export class AnalyticsController {
   @ApiResponse({ status: 200, type: DeveloperMetricsDto })
   async getDeveloperPullRequests(
     @Param() params: DeveloperParamsDto,
+    @Req() req: Request,
   ): Promise<DeveloperMetricsDto> {
+    const username = extractUsername(req.user);
     return this.analyticsService.getDeveloperPullRequests(
       params.owner,
       params.repo,
       params.username,
+      username,
     );
   }
 
@@ -43,10 +61,28 @@ export class AnalyticsController {
   @ApiResponse({ status: 200, type: TimingMetricsDto })
   async getPullRequestTimingMetrics(
     @Param() params: RepositoryParamsDto,
+    @Req() req: Request,
   ): Promise<TimingMetricsDto> {
+    const username = extractUsername(req.user);
     return this.analyticsService.getPullRequestTimingMetrics(
       params.owner,
       params.repo,
+      username,
     );
   }
+}
+
+function extractUsername(user: unknown): string {
+  if (!user) return '';
+  if (typeof user === 'string') return user;
+  if (typeof user === 'object' && user !== null) {
+    const u = user as Record<string, unknown>;
+    if (typeof u.username === 'string') return u.username;
+    // fallback to sub/id/_id/userId if username is not present
+    if (typeof u.sub === 'string') return u.sub;
+    if (typeof u.id === 'string') return u.id;
+    if (typeof u._id === 'string') return u._id;
+    if (typeof u.userId === 'string') return u.userId;
+  }
+  return '';
 }

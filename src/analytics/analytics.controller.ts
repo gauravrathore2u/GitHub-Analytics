@@ -15,10 +15,12 @@ import {
   TimingMetricsDto,
 } from './dto/pull-request.dto';
 import { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('analytics')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
+@Throttle({ default: { limit: 10, ttl: 60000 } })
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}

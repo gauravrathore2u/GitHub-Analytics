@@ -13,7 +13,7 @@ services:
       - mongo
     volumes:
       - .:/usr/src/app
-      - /usr/src/app/node_modules # Avoid node_modules override from host
+      - /usr/src/app/node_modules
     networks:
       - app-network
 

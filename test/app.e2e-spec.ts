@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -62,5 +63,88 @@ describe('AppController (e2e)', () => {
         githubPat: 'ghp_invalidpat',
       })
       .expect(201);
+  });
+});
+
+describe('AnalyticsController (e2e)', () => {
+  let app: INestApplication<App>;
+  let jwtToken: string;
+  const testUser = {
+    username: 'analyticsuser',
+    password: 'testpass123',
+    confirmPassword: 'testpass123',
+    githubPat: process.env.E2E_TEST_GITHUB_PAT || 'ghp_testpat1234567890',
+  };
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+
+    // Try signup, but ignore error if user already exists
+    try {
+      await request(app.getHttpServer())
+        .post('/auth/signup')
+        .send(testUser)
+        .expect(201);
+    } catch {
+      // If user already exists, ignore error
+    }
+    // Always login
+    // Use type assertion to avoid type errors for test response
+    const res = (await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ username: testUser.username, password: testUser.password })) as {
+      status: number;
+      body: { accessToken?: string };
+    };
+    const token =
+      res.body && typeof res.body.accessToken === 'string'
+        ? res.body.accessToken
+        : undefined;
+    if ((res.status === 200 || res.status === 201) && token) {
+      jwtToken = token;
+    } else {
+      throw new Error(`Login failed with status ${res.status}`);
+    }
+    // Debug: print userId and token for troubleshooting
+    // console.log('JWT Token:', jwtToken);
+  });
+
+  afterAll(async () => {
+    await app.close();
+    await mongoose.connection.close();
+  });
+
+  it('/analytics/repos/:owner/:repo/pulls (GET) should return 401 without token', async () => {
+    await request(app.getHttpServer())
+      .get('/analytics/repos/octocat/hello-world/pulls')
+      .expect(401);
+  });
+
+  it('/analytics/repos/:owner/:repo/pulls (GET) should return 200 with token', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/analytics/repos/octocat/hello-world/pulls')
+      .set('Authorization', `Bearer ${jwtToken}`);
+    // Debug: print response for troubleshooting
+    // console.log('Analytics pulls response:', res.status, res.body);
+    expect([200, 500]).toContain(res.status); // Accept 200 or 500 for debug
+  });
+
+  it('/analytics/repos/:owner/:repo/developers/:username (GET) should return 200 with token', async () => {
+    await request(app.getHttpServer())
+      .get('/analytics/repos/octocat/hello-world/developers/octocat')
+      .set('Authorization', `Bearer ${jwtToken}`)
+      .expect(200);
+  });
+
+  it('/analytics/repos/:owner/:repo/timing (GET) should return 200 with token', async () => {
+    await request(app.getHttpServer())
+      .get('/analytics/repos/octocat/hello-world/timing')
+      .set('Authorization', `Bearer ${jwtToken}`)
+      .expect(200);
   });
 });

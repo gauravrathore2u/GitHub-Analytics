@@ -12,7 +12,6 @@ export class UsersService {
   async createOrUpdate(userData: {
     id: string;
     username: string;
-    email: string;
     avatar: string;
     accessToken: string;
   }): Promise<User> {

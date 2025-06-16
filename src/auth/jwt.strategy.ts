@@ -18,11 +18,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: { sub: string; email: string }): {
+  validate(payload: { sub: string }): {
     userId: string;
-    email: string;
   } {
     // Optionally, you can fetch the user from the database here
-    return { userId: payload.sub, email: payload.email };
+    return { userId: payload.sub };
   }
 }

@@ -6,7 +6,6 @@ import { ConfigService } from '@nestjs/config';
 interface GithubProfile {
   id: string;
   username: string;
-  emails: Array<{ value: string }>;
   photos: Array<{ value: string }>;
 }
 
@@ -49,15 +48,13 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
     profile: GithubProfile,
   ): Promise<{
     id: string;
-    email: string;
     username: string;
     avatar: string;
     accessToken: string;
   }> {
-    const { id, username, emails, photos } = profile;
+    const { id, username, photos } = profile;
     const user = {
       id,
-      email: emails[0]?.value || '',
       username,
       avatar: photos[0]?.value || '',
       accessToken,

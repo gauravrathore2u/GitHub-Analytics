@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import mongoose from 'mongoose';
+import { getModelToken } from '@nestjs/mongoose';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -19,6 +20,12 @@ describe('AppController (e2e)', () => {
   });
 
   afterAll(async () => {
+    // Delete only users created in e2e test cases
+    const UserModel = app.get<mongoose.Model<mongoose.Document>>(
+      getModelToken('User'),
+    );
+    const usernamesToDelete = ['user1', 'user2', 'analyticsuser'];
+    await UserModel.deleteMany({ username: { $in: usernamesToDelete } });
     await app.close();
     await mongoose.connection.close();
   });
@@ -115,6 +122,12 @@ describe('AnalyticsController (e2e)', () => {
   });
 
   afterAll(async () => {
+    // Delete only users created in e2e test cases
+    const UserModel = app.get<mongoose.Model<mongoose.Document>>(
+      getModelToken('User'),
+    );
+    const usernamesToDelete = ['user1', 'user2', 'analyticsuser'];
+    await UserModel.deleteMany({ username: { $in: usernamesToDelete } });
     await app.close();
     await mongoose.connection.close();
   });

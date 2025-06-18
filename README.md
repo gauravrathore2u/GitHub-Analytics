@@ -5,6 +5,7 @@ A NestJS-based backend service for analyzing GitHub repositories, providing auth
 ## Features
 - JWT authentication
 - User management with JWT
+- Encrypted storage of GitHub Personal Access Tokens (PAT)
 - Analytics endpoints for GitHub pull requests and user data
 - Modular, scalable NestJS architecture
 - Dockerized for easy deployment

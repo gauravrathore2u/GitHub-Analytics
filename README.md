@@ -23,6 +23,7 @@ A NestJS-based backend service for analyzing GitHub repositories, providing auth
 ## Getting Started
 
 ### Prerequisites
+- Personal GitHub Access Token (PAT) for analytics features
 - Node.js (v18+ recommended)
 - npm or yarn
 - MongoDB (local or cloud instance)

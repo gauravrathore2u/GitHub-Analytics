@@ -4,16 +4,16 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - '3000:3000'
     environment:
       - MONGO_URI=${MONGO_URI}
     depends_on:
       - mongo
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
+    # volumes:
+    #   - .:/usr/src/app
+    #   - /usr/src/app/node_modules
     networks:
       - app-network
 
